@@ -1,14 +1,15 @@
 name: Release
 
+# Julkaisu syntyy puskemalla tagi:  git tag v1.2.3 && git push origin v1.2.3
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: write
 
 jobs:
-  assets:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -17,12 +18,19 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           jq --arg v "$VERSION" '.version = $v' custom_components/telia_prepaid/manifest.json > m.json
           mv m.json custom_components/telia_prepaid/manifest.json
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Julkaisutiedote CHANGELOGista
+        run: |
+          awk -v v="## $VERSION" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Versio $VERSION" > notes.md
       - name: Kokoa konsolitesti ja zip
         run: |
           python3 tools/build_console.py
           cd custom_components/telia_prepaid && zip -r ../../telia_prepaid.zip . -x '__pycache__/*'
       - uses: softprops/action-gh-release@v2
         with:
+          name: ${{ github.ref_name }}
+          body_path: notes.md
           files: |
             telia_prepaid.zip
             dist/telia_prepaid_test.py
