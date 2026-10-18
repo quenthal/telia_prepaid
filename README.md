@@ -120,5 +120,8 @@ python tools/build_console.py          # -> dist/telia_prepaid_test.py
 python tools/make_brand.py             # brändikuvat (vaatii pillow)
 ```
 
+Uusi versio julkaistaan nostamalla `version` tiedostossa `manifest.json` ja lisäämällä
+muutokset `CHANGELOG.md`:hen – GitHub Actions luo tagin ja julkaisun automaattisesti.
+
 Tämä ei ole Telian virallinen integraatio, eikä Telia ole osallisena projektissa.
 Kuvake on projektin oma.
