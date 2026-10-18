@@ -1,0 +1,69 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Telia Prepaid",
+        "description": "Log in with your Minun Prepaid credentials (prepaid.telia.fi).",
+        "data": {
+          "username": "Username (email)",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate",
+        "description": "Login for {username} failed. Enter the password again.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Could not connect to Telia.",
+      "cannot_parse": "The page structure was not recognized. Fetched pages were saved to /config/{debug_dir}.",
+      "unknown": "Unexpected error, see logs."
+    },
+    "abort": {
+      "already_configured": "Account is already configured.",
+      "reauth_successful": "Re-authentication successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval_minutes": "Update interval (minutes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "balance": {
+        "name": "Prepaid balance"
+      },
+      "bonus_balance": {
+        "name": "Bonus balance"
+      },
+      "total_balance": {
+        "name": "Total balance"
+      },
+      "valid_until": {
+        "name": "Valid until"
+      },
+      "days_remaining": {
+        "name": "Days remaining"
+      },
+      "subscription_type": {
+        "name": "Subscription type"
+      },
+      "sim_type": {
+        "name": "SIM type"
+      },
+      "status": {
+        "name": "Subscription status"
+      }
+    }
+  }
+}

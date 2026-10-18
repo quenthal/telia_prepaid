@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aseta versio manifestiin
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          jq --arg v "$VERSION" '.version = $v' custom_components/telia_prepaid/manifest.json > m.json
+          mv m.json custom_components/telia_prepaid/manifest.json
+      - name: Kokoa konsolitesti ja zip
+        run: |
+          python3 tools/build_console.py
+          cd custom_components/telia_prepaid && zip -r ../../telia_prepaid.zip . -x '__pycache__/*'
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            telia_prepaid.zip
+            dist/telia_prepaid_test.py

@@ -1,0 +1,69 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Telia Prepaid",
+        "description": "Kirjaudu Minun Prepaid -tunnuksilla (prepaid.telia.fi).",
+        "data": {
+          "username": "Käyttäjätunnus (sähköposti)",
+          "password": "Salasana"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Kirjaudu uudelleen",
+        "description": "Telia Prepaid -kirjautuminen tunnuksella {username} epäonnistui. Anna salasana uudelleen.",
+        "data": {
+          "password": "Salasana"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Kirjautuminen epäonnistui – tarkista tunnus ja salasana.",
+      "cannot_connect": "Telian palveluun ei saatu yhteyttä.",
+      "cannot_parse": "Kirjautumis- tai tilisivua ei tunnistettu. Haetut sivut tallennettiin kansioon /config/{debug_dir}.",
+      "unknown": "Odottamaton virhe, katso lokit."
+    },
+    "abort": {
+      "already_configured": "Tämä tili on jo lisätty.",
+      "reauth_successful": "Kirjautuminen päivitetty."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Asetukset",
+        "data": {
+          "scan_interval_minutes": "Päivitysväli (minuuttia)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "balance": {
+        "name": "Prepaid-saldo"
+      },
+      "bonus_balance": {
+        "name": "Bonussaldo"
+      },
+      "total_balance": {
+        "name": "Saldo yhteensä"
+      },
+      "valid_until": {
+        "name": "Liittymä voimassa"
+      },
+      "days_remaining": {
+        "name": "Voimassaoloa jäljellä"
+      },
+      "subscription_type": {
+        "name": "Liittymätyyppi"
+      },
+      "sim_type": {
+        "name": "SIM-kortin tyyppi"
+      },
+      "status": {
+        "name": "Liittymän tila"
+      }
+    }
+  }
+}

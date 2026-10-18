@@ -1,0 +1,6 @@
+{
+  "name": "Telia Prepaid",
+  "render_readme": true,
+  "country": ["FI"],
+  "homeassistant": "2025.1.0"
+}
