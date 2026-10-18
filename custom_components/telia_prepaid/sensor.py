@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -24,14 +24,12 @@ from .coordinator import TeliaPrepaidConfigEntry, TeliaPrepaidCoordinator
 
 
 def _days_remaining(sub: Subscription) -> int | None:
-    if sub.valid_until is None:
-        return None
-    return (sub.valid_until - dt_util.now().date()).days
+    return sub.days_remaining(dt_util.utcnow())
 
 
 @dataclass(frozen=True, kw_only=True)
 class TeliaSensorDescription(SensorEntityDescription):
-    value_fn: Callable[[Subscription], float | int | str | date | None]
+    value_fn: Callable[[Subscription], float | int | str | datetime | None]
 
 
 SENSORS: tuple[TeliaSensorDescription, ...] = (
@@ -65,7 +63,7 @@ SENSORS: tuple[TeliaSensorDescription, ...] = (
     TeliaSensorDescription(
         key="valid_until",
         translation_key="valid_until",
-        device_class=SensorDeviceClass.DATE,
+        device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda s: s.valid_until,
     ),
     TeliaSensorDescription(

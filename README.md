@@ -23,8 +23,8 @@ Jokaisesta liittymästä tulee oma laite (nimi sivulta, esim. "Veikon liittymä"
 | Prepaid-saldo | 11,41 € | |
 | Bonussaldo | 4,93 € | |
 | Saldo yhteensä | 16,34 € | prepaid + bonus |
-| Liittymä voimassa | 17.10.2027 | päivämäärä |
-| Voimassaoloa jäljellä | 364 d | |
+| Liittymä voimassa | 17.10.2027 klo 00.00 | aikaleima (tarkka hetki Telian `expiryDateUtc`-kentästä) |
+| Voimassaoloa jäljellä | 364 d | kalenteripäivää Suomen aikaa |
 | Liittymätyyppi | Telia Prepaid | diagnostiikka |
 | SIM-kortin tyyppi | SIM-kortti | diagnostiikka |
 | Liittymän tila | ACTIVE | diagnostiikka |
@@ -104,7 +104,10 @@ automation:
     actions:
       - action: notify.notify
         data:
-          message: "Prepaid-liittymä vanhenee {{ states('sensor.veikon_liittyma_liittyma_voimassa') }} – lataa saldoa."
+          message: >-
+            Prepaid-liittymä vanhenee
+            {{ as_timestamp(states('sensor.veikon_liittyma_liittyma_voimassa')) | timestamp_custom('%d.%m.%Y klo %H.%M') }}
+            – lataa saldoa.
 ```
 
 ## Kehitys

@@ -100,21 +100,22 @@ async def _main() -> int:
                 "balance": s.balance, "bonus_balance": s.bonus_balance,
                 "total_balance": s.total_balance,
                 "valid_until": s.valid_until.isoformat() if s.valid_until else None,
+                "days_remaining": s.days_remaining(),
                 "subscription_type": s.subscription_type, "sim_type": s.sim_type, "status": s.status,
             } for s in data.values()],
             ensure_ascii=False, indent=2,
         ))
     else:
         print(f"\n✓ Kirjautuminen onnistui, liittymiä: {len(data)}")
-        today = date.today()
         for s in data.values():
-            days = (s.valid_until - today).days if s.valid_until else None
+            days = s.days_remaining()
+            vl = s.valid_until_local
             print(f"\n  {s.name or 'Liittymä'}  {s.number}  (lisätiedot: /fi/account/{s.subscription_id})")
             print(f"    Prepaid-saldo        {_fmt_eur(s.balance)}")
             print(f"    Bonussaldo           {_fmt_eur(s.bonus_balance)}")
             print(f"    Saldo yhteensä       {_fmt_eur(s.total_balance)}")
             print(f"    Liittymä voimassa    "
-                  f"{s.valid_until.strftime('%d.%m.%Y') if s.valid_until else '–'}"
+                  f"{vl.strftime('%d.%m.%Y klo %H.%M') if vl else '–'}"
                   f"{f'  ({days} pv jäljellä)' if days is not None else ''}")
             print(f"    Liittymätyyppi       {s.subscription_type or '–'}")
             print(f"    SIM-kortin tyyppi    {s.sim_type or '–'}")

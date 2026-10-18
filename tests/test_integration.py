@@ -46,7 +46,10 @@ async def test_flow_and_sensors(hass):
     assert states["sensor.veikon_liittyma_prepaid_balance"].state == "11.41"
     assert states["sensor.veikon_liittyma_bonus_balance"].state == "4.93"
     assert states["sensor.veikon_liittyma_total_balance"].state == "16.34"
-    assert states["sensor.veikon_liittyma_valid_until"].state == "2027-10-17"
+    assert states["sensor.veikon_liittyma_valid_until"].state == "2027-10-16T21:00:00+00:00"
+    assert states["sensor.veikon_liittyma_valid_until"].attributes["device_class"] == "timestamp"
+    # pelkkä päivämäärä -> päivän alku Suomen aikaa
+    assert states["sensor.mokin_reititin_valid_until"].state == "2027-01-31T22:00:00+00:00"
     assert states["sensor.veikon_liittyma_sim_type"].state == "SIM-kortti"
     assert states["sensor.veikon_liittyma_subscription_type"].state == "Telia Prepaid"
     assert states["sensor.mokin_reititin_sim_type"].state == "eSIM"
@@ -75,4 +78,5 @@ async def test_stale_action_ids_are_refreshed():
         }
         data = await client.async_get_data()
         assert data["0408179596"].balance == 11.41
-        assert data["0408179596"].valid_until.isoformat() == "2027-10-17"
+        assert data["0408179596"].valid_until.isoformat() == "2027-10-16T21:00:00+00:00"
+        assert data["0408179596"].valid_until_local.date().isoformat() == "2027-10-17"

@@ -25,7 +25,7 @@ import logging
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone, tzinfo
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
@@ -91,11 +91,24 @@ class Subscription:
     subscription_id: str | None = None
     balance: float | None = None
     bonus_balance: float | None = None
-    valid_until: date | None = None
+    valid_until: datetime | None = None  # tarkka hetki, UTC
     subscription_type: str | None = None
     sim_type: str | None = None
     status: str | None = None
     raw: dict[str, Any] = field(default_factory=dict, repr=False)
+
+    @property
+    def valid_until_local(self) -> datetime | None:
+        """Voimassaolon päättyminen Suomen aikaa."""
+        return self.valid_until.astimezone(local_tz()) if self.valid_until else None
+
+    def days_remaining(self, now: datetime | None = None) -> int | None:
+        """Kalenteripäiviä jäljellä (Suomen aikaa) päättymispäivään."""
+        if self.valid_until is None:
+            return None
+        tz = local_tz()
+        today = (now or datetime.now(timezone.utc)).astimezone(tz).date()
+        return (self.valid_until.astimezone(tz).date() - today).days
 
     @property
     def total_balance(self) -> float | None:
@@ -155,29 +168,39 @@ def _to_float(value: Any) -> float | None:
     return None
 
 
-def _to_date(value: Any) -> date | None:
-    if not isinstance(value, str):
-        return None
-    s = value[2:] if value.startswith("$D") else value
-    if m := re.fullmatch(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", s.strip()):
-        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-    if not re.match(r"\d{4}-\d{2}-\d{2}", s):
-        return None
-    try:
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-    except ValueError:
-        try:
-            return date.fromisoformat(s[:10])
-        except ValueError:
-            return None
-    if dt.tzinfo is None:
-        return dt.date()
+def local_tz() -> tzinfo:
+    """Suomen aikavyöhyke (Windowsissa ei välttämättä tietokantaa -> järjestelmän oma)."""
     try:
         from zoneinfo import ZoneInfo
 
-        return dt.astimezone(ZoneInfo("Europe/Helsinki")).date()
-    except Exception:  # noqa: BLE001 - Windowsissa ei välttämättä aikavyöhyketietokantaa
-        return dt.astimezone().date()
+        return ZoneInfo("Europe/Helsinki")
+    except Exception:  # noqa: BLE001
+        return datetime.now().astimezone().tzinfo or timezone.utc
+
+
+def _to_datetime(value: Any) -> datetime | None:
+    """Muuntaa aikatiedon aikavyöhyketietoiseksi datetimeksi (UTC).
+
+    Telia antaa voimassaolon kentässä expiryDateUtc (ISO 8601, UTC). Pelkkä
+    päivämäärä tulkitaan sen päivän alkuhetkeksi Suomen aikaa.
+    """
+    if not isinstance(value, str):
+        return None
+    s = (value[2:] if value.startswith("$D") else value).strip()
+    if m := re.fullmatch(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", s):
+        d = date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        return datetime.combine(d, time.min, local_tz()).astimezone(timezone.utc)
+    if not re.match(r"\d{4}-\d{2}-\d{2}", s):
+        return None
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return datetime.combine(date.fromisoformat(s), time.min, local_tz()).astimezone(timezone.utc)
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:  # kentän nimen mukaan UTC
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def _walk(obj: Any, path: str = ""):
@@ -199,14 +222,14 @@ def _first(obj: dict, *keys: str) -> Any:
     return None
 
 
-def _find_valid_until(obj: dict) -> date | None:
+def _find_valid_until(obj: dict) -> datetime | None:
     preferred = (
         "expiryDateUtc", "subscriptionValidUntil", "validUntil", "validTo", "validityEndDate",
         "expirationDate", "expiryDate", "expiresAt", "inEffectUntil", "endDate",
         "subscriptionExpirationDate", "lifecycleEndDate",
     )
     for k in preferred:
-        if (d := _to_date(obj.get(k))) is not None:
+        if (d := _to_datetime(obj.get(k))) is not None:
             return d
     # Heuristiikka: ensimmäinen päivämäärä avaimessa, joka viittaa voimassaoloon
     for path, key, value in _walk(obj):
@@ -214,7 +237,7 @@ def _find_valid_until(obj: dict) -> date | None:
         if "package" in low or "topup" in low or "card" in low:
             continue
         if re.search(r"valid|expir|effect|until|end", key, re.I):
-            if (d := _to_date(value)) is not None:
+            if (d := _to_datetime(value)) is not None:
                 return d
     return None
 
