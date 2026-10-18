@@ -5,7 +5,7 @@
 # Telia Prepaid – Home Assistant
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![Validate](https://github.com/OWNER/REPO/actions/workflows/validate.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/validate.yml)
+[![Validate](https://github.com/quenthal/telia_prepaid/actions/workflows/validate.yml/badge.svg)](https://github.com/quenthal/telia_prepaid/actions/workflows/validate.yml)
 
 Tuo Telia Prepaid -liittymiesi saldot ja voimassaolon Home Assistantiin.
 Tiedot luetaan samasta Minun Prepaid -palvelusta (prepaid.telia.fi), jota käytät
@@ -35,7 +35,7 @@ Vahvistamattomat liittymät (odottavat PREPAID TILI OK -tekstiviestiä) ohitetaa
 ## Asennus
 
 **HACS:** HACS → oikean yläkulman valikko → *Mukautetut repositoriot* →
-lisää `https://github.com/OWNER/REPO`, tyyppi *Integraatio* → asenna **Telia Prepaid**
+lisää `https://github.com/quenthal/telia_prepaid`, tyyppi *Integraatio* → asenna **Telia Prepaid**
 → käynnistä Home Assistant uudelleen.
 
 **Käsin:** kopioi `custom_components/telia_prepaid` kansioon `/config/custom_components/`

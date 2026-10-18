@@ -2,13 +2,13 @@
   "domain": "telia_prepaid",
   "name": "Telia Prepaid",
   "codeowners": [
-    "@OWNER"
+    "@quenthal"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/OWNER/REPO",
+  "documentation": "https://github.com/quenthal/telia_prepaid",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/OWNER/REPO/issues",
+  "issue_tracker": "https://github.com/quenthal/telia_prepaid/issues",
   "requirements": [],
   "version": "1.0.0"
 }
