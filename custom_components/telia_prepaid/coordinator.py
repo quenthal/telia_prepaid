@@ -15,6 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import (
+    new_cookie_jar,
     Subscription,
     TeliaPrepaidAuthError,
     TeliaPrepaidClient,
@@ -49,7 +50,7 @@ class TeliaPrepaidCoordinator(DataUpdateCoordinator[dict[str, Subscription]]):
             update_interval=timedelta(minutes=minutes),
         )
         # Oma eväste-säiliö, jotta Telian istunto ei sekoitu muiden integraatioiden kanssa
-        session = async_create_clientsession(hass, cookie_jar=aiohttp.CookieJar())
+        session = async_create_clientsession(hass, cookie_jar=new_cookie_jar())
         self.client = TeliaPrepaidClient(
             session, entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD]
         )

@@ -69,7 +69,7 @@ async def test_flow_and_sensors(hass):
 
 async def test_stale_action_ids_are_refreshed():
     """Jos Telia julkaisee uuden version, vanhat toimintotunnisteet haetaan uudelleen."""
-    async with aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar()) as session:
+    async with aiohttp.ClientSession(cookie_jar=api.new_cookie_jar()) as session:
         client = api.TeliaPrepaidClient(session, "veikko@example.com", "salainen")
         client._actions = {
             "getULMOpenIDToken": "7f" + "00" * 20,

@@ -1,5 +1,14 @@
 # Muutokset
 
+## 1.0.1
+
+- Korjattu: kirjautuminen epäonnistui Home Assistantissa virheellä "Kirjautumis- tai
+  tilisivua ei tunnistettu". aiohttp lähetti Telia Tilin istuntoevästeen
+  lainausmerkeissä, jolloin id.telia.fi ohjasi takaisin kirjautumissivulle.
+  Konsolitesti ei kärsinyt viasta, koska se käyttää Pythonin omaa evästekäsittelyä.
+- Selkeämpi virheilmoitus, jos Telia Tili ei tunnista istuntoa.
+- Testipalvelin tarkistaa nyt raa'an Cookie-otsakkeen kuten oikea palvelu.
+
 ## 1.0.0
 
 Ensimmäinen julkaisu.

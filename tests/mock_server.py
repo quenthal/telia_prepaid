@@ -44,15 +44,20 @@ async def session_start(r):
     body = await r.json()
     if body.get("username") != USER or body.get("credential") != PASSWORD:
         return web.json_response({"error": "invalid"}, status=401)
-    sid = secrets.token_hex(8)
+    sid = "aB3/" + secrets.token_hex(8) + "+x=="
     ULM_SESSIONS.add(sid)
     resp = web.json_response({"userId": 987654, "processId": "p1", "status": "OK"})
-    resp.set_cookie("ULMSESSION", sid, path="/")
+    # Raaka Set-Cookie kuten Javassa: arvoa ei lainausmerkitä
+    resp.headers.add("Set-Cookie", f"ULMSESSION={sid}; Path=/; HttpOnly; SameSite=None")
     return resp
 
 
 async def authorize(r):
-    if r.cookies.get("ULMSESSION") not in ULM_SESSIONS:
+    # Tiukka tarkistus raa'asta otsakkeesta (lainausmerkitty arvo ei kelpaa)
+    raw = dict(
+        p.strip().split("=", 1) for p in r.headers.get("Cookie", "").split(";") if "=" in p
+    )
+    if raw.get("ULMSESSION") not in ULM_SESSIONS:
         return web.Response(text="<html>login</html>", content_type="text/html")
     assert r.query["client_id"] == "1fec972e-36b3-4566-96cb-987d3750e7b4"
     code = secrets.token_hex(8)

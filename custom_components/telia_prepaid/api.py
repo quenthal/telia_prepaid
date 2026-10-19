@@ -66,6 +66,16 @@ _ACTION_RE = re.compile(
 )
 
 
+def new_cookie_jar():
+    """aiohttp-evästesäiliö Telian palveluille.
+
+    quote_cookie=False on välttämätön: id.telia.fi:n istuntoevästeen arvossa on
+    merkkejä (esim. / ja =), jotka aiohttp muuten lähettäisi lainausmerkeissä,
+    jolloin palvelin ei tunnista istuntoa ja ohjaa kirjautumissivulle.
+    """
+    return aiohttp.CookieJar(quote_cookie=False)
+
+
 class TeliaPrepaidError(Exception):
     """Yleinen virhe."""
 
@@ -427,7 +437,10 @@ class TeliaPrepaidClient:
         except ValueError as err:
             raise TeliaPrepaidParseError(f"session/start palautti {resp.status}, ei JSONia") from err
         keys = sorted(data) if isinstance(data, dict) else []
-        _LOGGER.debug("session/start -> kentät %s", keys)
+        cookie_names = sorted(
+            {c.split("=", 1)[0].strip() for k, c in resp.headers.items() if k == "set-cookie"}
+        )
+        _LOGGER.debug("session/start -> kentät %s, evästeet %s", keys, cookie_names)
         if not isinstance(data, dict) or not isinstance(data.get("userId"), int):
             raise TeliaPrepaidParseError(f"session/start: userId puuttuu (kentät {keys})")
         self._user_id = data["userId"]
@@ -453,6 +466,11 @@ class TeliaPrepaidClient:
             if not (300 <= resp.status < 400 and loc):
                 raise TeliaPrepaidParseError(
                     f"OIDC-ohjaus pysähtyi: {resp.status} osoitteessa {mask(resp.url)}"
+                )
+            if "/login" in urlparse(loc).path and not loc.startswith(ULM_REDIRECT_URI):
+                raise TeliaPrepaidParseError(
+                    "Telia Tili ei tunnistanut kirjautumista seuraavassa pyynnössä "
+                    "(istuntoeväste ei kulkenut). Ohjaus: " + mask(loc)
                 )
             if loc.startswith(ULM_REDIRECT_URI):
                 callback_url = loc

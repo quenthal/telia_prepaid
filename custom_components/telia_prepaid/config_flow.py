@@ -22,6 +22,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import (
+    new_cookie_jar,
     TeliaPrepaidAuthError,
     TeliaPrepaidClient,
     TeliaPrepaidError,
@@ -53,7 +54,7 @@ USER_SCHEMA = vol.Schema(
 async def _validate(hass: HomeAssistant, username: str, password: str) -> dict[str, str]:
     """Kokeilee kirjautumista. Palauttaa virheet lomakkeelle."""
     # Lyhytikäinen oma istunto tunnusten tarkistukseen
-    session = aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar())
+    session = aiohttp.ClientSession(cookie_jar=new_cookie_jar())
     client = TeliaPrepaidClient(session, username, password)
     try:
         await client.async_validate()
