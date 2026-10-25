@@ -1,6 +1,7 @@
 """Tietojen päivitys Telia Prepaid -palvelusta."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -22,6 +23,7 @@ from .api import (
     TeliaPrepaidError,
     TeliaPrepaidParseError,
 )
+from . import const
 from .const import CONF_SCAN_INTERVAL_MIN, DEBUG_DIR, DEFAULT_SCAN_INTERVAL_MIN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,16 +59,38 @@ class TeliaPrepaidCoordinator(DataUpdateCoordinator[dict[str, Subscription]]):
 
     async def _async_update_data(self) -> dict[str, Subscription]:
         try:
-            return await self.client.async_get_data()
+            return await self._get_data()
         except TeliaPrepaidAuthError as err:
+            # HA lopettaa päivitykset, kunnes käyttäjä antaa salasanan uudelleen
             raise ConfigEntryAuthFailed(str(err)) from err
         except TeliaPrepaidParseError as err:
             directory = Path(self.hass.config.path(DEBUG_DIR))
             await self.hass.async_add_executor_job(
                 _write_debug_pages, directory, dict(self.client.debug_pages)
             )
-            raise UpdateFailed(
+            raise self._update_failed(
                 f"{err} Haetut sivut tallennettiin kansioon {directory} vianetsintää varten."
             ) from err
         except TeliaPrepaidError as err:
-            raise UpdateFailed(str(err)) from err
+            raise self._update_failed(str(err)) from err
+
+    async def _get_data(self) -> dict[str, Subscription]:
+        """Hylätty kirjautuminen varmistetaan vielä kerran ennen salasanakyselyä."""
+        try:
+            return await self.client.async_get_data()
+        except TeliaPrepaidAuthError as err:
+            _LOGGER.warning(
+                "%s Yritetään uudelleen %d s kuluttua.", err, const.AUTH_RETRY_DELAY_S
+            )
+            await asyncio.sleep(const.AUTH_RETRY_DELAY_S)
+            return await self.client.async_get_data()
+
+    def _update_failed(self, message: str) -> UpdateFailed:
+        """Seuraava yritys RETRY_AFTER_ERROR_MIN kuluttua eikä vasta koko päivitysvälin päästä."""
+        retry_s = const.RETRY_AFTER_ERROR_MIN * 60
+        if self.update_interval is None or self.update_interval.total_seconds() <= retry_s:
+            return UpdateFailed(message)
+        try:
+            return UpdateFailed(message, retry_after=retry_s)
+        except TypeError:  # HA ennen retry_after-tukea
+            return UpdateFailed(message)

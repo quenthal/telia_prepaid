@@ -31,7 +31,4 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install pytest-homeassistant-custom-component
-      - run: |
-          python tests/mock_server.py &
-          sleep 2
-          pytest tests -q
+      - run: pytest tests -q

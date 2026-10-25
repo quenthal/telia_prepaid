@@ -1,28 +1,43 @@
-"""Testit paikallista Telia-jäljitelmää vasten (tools/mock_server.py, portti 8765)."""
-from unittest.mock import patch
-
+"""Testit paikallista Telia-jäljitelmää vasten (tests/mock_server.py, käynnistyy fixturessa)."""
 import aiohttp
 import pytest
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.telia_prepaid import api
 from custom_components.telia_prepaid.const import DOMAIN
 
-BASE = "http://localhost:8765"
-SESSIONS: list[aiohttp.ClientSession] = []
+from . import mock_server
 
 
 @pytest.fixture(autouse=True)
-def mock_urls(socket_enabled):
-    with patch.object(api, "PREPAID_BASE", BASE), patch.object(api, "ULM_BASE", BASE), patch.object(
-        api, "ULM_REDIRECT_URI", f"{BASE}/auth/callback"
-    ), patch(
-        # Testikehyksen jaettu sessio käyttää eri tapahtumasilmukan resolveria
-        "custom_components.telia_prepaid.coordinator.async_create_clientsession",
-        lambda hass, **kw: SESSIONS.append(aiohttp.ClientSession(**kw)) or SESSIONS[-1],
-    ):
-        yield
+def _server(telia_server):
+    yield
+
+
+async def _setup_entry(hass, wrong_password: bool = False) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=mock_server.USER,
+        data={
+            "username": mock_server.USER,
+            "password": "vaara" if wrong_password else mock_server.PASSWORD,
+        },
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+def _reauth_flows(hass):
+    return [
+        f
+        for f in hass.config_entries.flow.async_progress_by_handler(DOMAIN)
+        if f["context"]["source"] == config_entries.SOURCE_REAUTH
+    ]
 
 
 async def test_flow_and_sensors(hass):
@@ -63,8 +78,73 @@ async def test_flow_and_sensors(hass):
     entry = hass.config_entries.async_entries(DOMAIN)[0]
     assert entry.runtime_data.update_interval.total_seconds() == 7200
     await hass.config_entries.async_unload(entry.entry_id)
-    for session in SESSIONS:
-        await session.close()
+
+
+async def test_new_subscription_gets_sensors_without_reload(hass, monkeypatch):
+    entry = await _setup_entry(hass)
+    assert len(hass.states.async_all("sensor")) == 16
+    monkeypatch.setattr(mock_server, "SUBS", mock_server.SUBS + [
+        {"ulmId": 333, "msisdn": "358501112223", "displayName": "Uusi liittymä",
+         "balanceInEuros": 5, "isConfirmed": True},
+    ])
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert len(hass.states.async_all("sensor")) == 24
+    assert hass.states.get("sensor.uusi_liittyma_prepaid_balance").state == "5.0"
+
+
+@pytest.mark.parametrize("fault", ["token_fail", "subs_401", "session_403_html", "session_429"])
+async def test_temporary_errors_do_not_ask_password(hass, fault):
+    """Telian hetkellinen vika ei saa pysäyttää päivityksiä eikä kysyä salasanaa."""
+    entry = await _setup_entry(hass)
+    coordinator = entry.runtime_data
+    mock_server.FAULTS[fault] = 1
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert not coordinator.last_update_success
+    assert _reauth_flows(hass) == []
+    assert coordinator.last_exception.retry_after == 30 * 60  # seuraava yritys 30 min, ei 6 h
+    await coordinator.async_refresh()
+    assert coordinator.last_update_success
+
+
+async def test_single_rejected_login_is_retried(hass):
+    mock_server.FAULTS["session_401"] = 1
+    entry = await _setup_entry(hass)
+    assert entry.state is ConfigEntryState.LOADED
+    assert _reauth_flows(hass) == []
+
+
+async def test_wrong_password_asks_password(hass):
+    entry = await _setup_entry(hass, wrong_password=True)
+    assert entry.state is ConfigEntryState.SETUP_ERROR
+    assert len(_reauth_flows(hass)) == 1
+
+
+async def test_reauth_reloads_without_update_listener_warning(hass, caplog):
+    # Kuten tuotannossa: integraatio on käynnissä, kun Telia hylkää tunnukset
+    entry = await _setup_entry(hass)
+    mock_server.FAULTS["session_401"] = 2
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    flow = _reauth_flows(hass)[0]
+    result = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {"password": mock_server.PASSWORD}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert entry.state is ConfigEntryState.LOADED
+    assert "update listener" not in caplog.text
+
+
+async def test_days_remaining_changes_at_finnish_midnight(hass, freezer):
+    freezer.move_to("2026-10-18 20:59:00+00:00")  # 23.59 Suomessa
+    await _setup_entry(hass)
+    assert hass.states.get("sensor.veikon_liittyma_days_remaining").state == "364"
+    freezer.move_to("2026-10-18 21:00:05+00:00")
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.veikon_liittyma_days_remaining").state == "363"
 
 
 async def test_stale_action_ids_are_refreshed():

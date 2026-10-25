@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,13 +12,14 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import EntityCategory, UnitOfTime
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .api import Subscription
+from .api import Subscription, local_tz
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import TeliaPrepaidConfigEntry, TeliaPrepaidCoordinator
 
@@ -27,9 +28,17 @@ def _days_remaining(sub: Subscription) -> int | None:
     return sub.days_remaining(dt_util.utcnow())
 
 
+def next_local_midnight(now: datetime) -> datetime:
+    """Seuraava vuorokauden vaihde Suomen aikaa (UTC), pari sekuntia yli."""
+    tz = local_tz()
+    day = now.astimezone(tz).date() + timedelta(days=1)
+    return (datetime.combine(day, time.min, tz) + timedelta(seconds=2)).astimezone(dt_util.UTC)
+
+
 @dataclass(frozen=True, kw_only=True)
 class TeliaSensorDescription(SensorEntityDescription):
     value_fn: Callable[[Subscription], float | int | str | datetime | None]
+    midnight_update: bool = False  # arvo riippuu päivämäärästä, ei vain haetuista tiedoista
 
 
 SENSORS: tuple[TeliaSensorDescription, ...] = (
@@ -74,6 +83,7 @@ SENSORS: tuple[TeliaSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.DAYS,
         suggested_display_precision=0,
         value_fn=_days_remaining,
+        midnight_update=True,
     ),
     TeliaSensorDescription(
         key="subscription_type",
@@ -102,11 +112,23 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(
-        TeliaPrepaidSensor(coordinator, number, description)
-        for number in coordinator.data
-        for description in SENSORS
-    )
+    known: set[str] = set()
+
+    @callback
+    def _add_new_subscriptions() -> None:
+        """Tilille myöhemmin lisätyt liittymät saavat sensorinsa ilman uudelleenlatausta."""
+        new = [number for number in coordinator.data or {} if number not in known]
+        if not new:
+            return
+        known.update(new)
+        async_add_entities(
+            TeliaPrepaidSensor(coordinator, number, description)
+            for number in new
+            for description in SENSORS
+        )
+
+    _add_new_subscriptions()
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_subscriptions))
 
 
 class TeliaPrepaidSensor(CoordinatorEntity[TeliaPrepaidCoordinator], SensorEntity):
@@ -114,6 +136,7 @@ class TeliaPrepaidSensor(CoordinatorEntity[TeliaPrepaidCoordinator], SensorEntit
 
     _attr_has_entity_name = True
     entity_description: TeliaSensorDescription
+    _unsub_midnight: CALLBACK_TYPE | None = None
 
     def __init__(
         self,
@@ -138,6 +161,28 @@ class TeliaPrepaidSensor(CoordinatorEntity[TeliaPrepaidCoordinator], SensorEntit
                 else "https://prepaid.telia.fi/fi/account"
             ),
         )
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self.entity_description.midnight_update:
+            self._schedule_midnight()
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsub_midnight:
+            self._unsub_midnight()
+            self._unsub_midnight = None
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _schedule_midnight(self) -> None:
+        self._unsub_midnight = async_track_point_in_utc_time(
+            self.hass, self._at_midnight, next_local_midnight(dt_util.utcnow())
+        )
+
+    @callback
+    def _at_midnight(self, _now: datetime) -> None:
+        self._schedule_midnight()
+        self.async_write_ha_state()
 
     @property
     def _sub(self) -> Subscription | None:

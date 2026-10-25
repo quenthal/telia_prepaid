@@ -4,6 +4,9 @@ Jäljittelee: session/start, OIDC authorize -> callback-sivu, jonka palvelintoim
 getULMOpenIDToken(code) palauttaa pääsytunnisteen,
 tilisivu jonka JS-tiedostossa createServerReference-tunnisteet, ja Next.js
 Server Actionit getAllSubscriptions / getSubscriptionByUlmId.
+
+Testit käynnistävät palvelimen itse (tests/conftest.py); käsin: python tests/mock_server.py.
+FAULTS-laskureilla simuloidaan Telian hetkellisiä vikoja (laskuri = montako kertaa).
 """
 import json
 import secrets
@@ -19,6 +22,21 @@ A_ALL = "7f" + "a1" * 20
 A_ONE = "7f" + "b2" * 20
 A_TOKEN = "7f" + "c3" * 20
 A_COOKIE = "7f" + "d4" * 20
+
+FAULTS = {
+    "session_401": 0,  # session/start hylkää tunnukset (JSON)
+    "session_403_html": 0,  # palomuurin HTML-sivu
+    "session_429": 0,  # kirjautumisten rajoitus
+    "token_fail": 0,  # koodin vaihto palauttaa success: false
+    "subs_401": 0,  # liittymähaku palauttaa tilan 401
+}
+
+
+def _fault(name: str) -> bool:
+    if FAULTS[name] > 0:
+        FAULTS[name] -= 1
+        return True
+    return False
 
 SUBS = [
     {"ulmId": 42522967, "msisdn": "358408179596", "displayName": "Veikon liittymä",
@@ -42,7 +60,11 @@ DETAILS = {
 
 async def session_start(r):
     body = await r.json()
-    if body.get("username") != USER or body.get("credential") != PASSWORD:
+    if _fault("session_403_html"):
+        return web.Response(text="<html>Access Denied</html>", status=403, content_type="text/html")
+    if _fault("session_429"):
+        return web.json_response({"error": "too_many_requests"}, status=429)
+    if _fault("session_401") or body.get("username") != USER or body.get("credential") != PASSWORD:
         return web.json_response({"error": "invalid"}, status=401)
     sid = "aB3/" + secrets.token_hex(8) + "+x=="
     ULM_SESSIONS.add(sid)
@@ -105,7 +127,7 @@ async def action(r):
     if r.headers["Next-Action"] not in (A_TOKEN, A_COOKIE, A_ALL, A_ONE):
         return web.Response(status=404, text="Server action not found")
     if r.headers["Next-Action"] == A_TOKEN:
-        if CODES.pop(args[0], None) is None:
+        if CODES.pop(args[0], None) is None or _fault("token_fail"):
             result = {"success": False}
         else:
             token = "eyJhbGciOiJSUzI1NiJ9." + secrets.token_urlsafe(24) + "." + secrets.token_urlsafe(24)
@@ -113,7 +135,7 @@ async def action(r):
             result = {"success": True, "accessToken": token, "expiresIn": 3600, "username": USER}
     elif r.headers["Next-Action"] == A_COOKIE:
         result = None
-    elif args[0] not in TOKENS:
+    elif args[0] not in TOKENS or _fault("subs_401"):
         result = {"status": 401, "data": None}
     elif r.headers["Next-Action"] == A_ALL:
         result = {"status": 200, "data": SUBS}
@@ -126,12 +148,15 @@ async def action(r):
     return web.Response(text=text, content_type="text/x-component")
 
 
-app = web.Application()
-app.router.add_post("/rest/v80/session/start", session_start)
-app.router.add_get("/oidc/authorize", authorize)
-app.router.add_route("*", "/auth/callback", callback)
-app.router.add_route("*", "/fi/account", account)
-app.router.add_get("/_next/static/chunks/{name:.+}", chunk)
+def make_app() -> web.Application:
+    app = web.Application()
+    app.router.add_post("/rest/v80/session/start", session_start)
+    app.router.add_get("/oidc/authorize", authorize)
+    app.router.add_route("*", "/auth/callback", callback)
+    app.router.add_route("*", "/fi/account", account)
+    app.router.add_get("/_next/static/chunks/{name:.+}", chunk)
+    return app
+
 
 if __name__ == "__main__":
-    web.run_app(app, port=PORT, print=None)
+    web.run_app(make_app(), port=PORT, print=None)
