@@ -7,6 +7,10 @@
   liittymähaku) tulkittiin väärin tunnusvirheiksi, jolloin Home Assistant lopetti
   päivitykset. Nyt salasanaa kysytään vain, jos Telia Tili hylkää tunnukset kahdesti
   peräkkäin; palomuurin sivu (403) ja kirjautumisrajoitus (429) ovat tilapäisiä virheitä.
+- Korjattu varoitus "has an update listener and should use it for scheduling a reload",
+  joka tuli salasanan uusimisen yhteydessä (lakkaisi toimimasta HA 2026.12:ssa).
+  Asetusten muutos lataa integraation uudelleen HA:n omalla mekanismilla.
+  Vaatii nyt Home Assistant 2025.8:n tai uudemman.
 - Epäonnistunut haku yritetään uudelleen 30 minuutin kuluttua eikä vasta seuraavalla
   päivitysvälillä.
 - Tilille myöhemmin lisätyt liittymät saavat sensorinsa ilman uudelleenkäynnistystä.

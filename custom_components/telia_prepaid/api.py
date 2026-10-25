@@ -522,7 +522,10 @@ class TeliaPrepaidClient:
             )
         if not result.get("success") or not result.get("accessToken"):
             raise TeliaPrepaidError(
-                f"Koodin vaihto tunnisteeksi epäonnistui (vastaus: {sorted(result)})"
+                "Koodin vaihto tunnisteeksi epäonnistui "
+                f"(success={result.get('success')!r}, "
+                f"tunniste {'saatu' if result.get('accessToken') else 'puuttuu'}, "
+                f"kentät {sorted(result)})"
             )
         self._access_token = result["accessToken"]
         _LOGGER.debug(

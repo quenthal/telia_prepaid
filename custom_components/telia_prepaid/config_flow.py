@@ -9,7 +9,12 @@ from typing import Any
 import aiohttp
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.selector import (
@@ -136,8 +141,8 @@ class TeliaPrepaidConfigFlow(ConfigFlow, domain=DOMAIN):
         return TeliaPrepaidOptionsFlow()
 
 
-class TeliaPrepaidOptionsFlow(OptionsFlow):
-    """Päivitysvälin asetus."""
+class TeliaPrepaidOptionsFlow(OptionsFlowWithReload):
+    """Päivitysvälin asetus. HA lataa integraation uudelleen, kun asetus muuttuu."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:

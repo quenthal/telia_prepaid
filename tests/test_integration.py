@@ -121,6 +121,22 @@ async def test_wrong_password_asks_password(hass):
     assert len(_reauth_flows(hass)) == 1
 
 
+async def test_reauth_reloads_without_update_listener_warning(hass, caplog):
+    # Kuten tuotannossa: integraatio on käynnissä, kun Telia hylkää tunnukset
+    entry = await _setup_entry(hass)
+    mock_server.FAULTS["session_401"] = 2
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    flow = _reauth_flows(hass)[0]
+    result = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {"password": mock_server.PASSWORD}
+    )
+    await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert entry.state is ConfigEntryState.LOADED
+    assert "update listener" not in caplog.text
+
+
 async def test_days_remaining_changes_at_finnish_midnight(hass, freezer):
     freezer.move_to("2026-10-18 20:59:00+00:00")  # 23.59 Suomessa
     await _setup_entry(hass)
