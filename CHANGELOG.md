@@ -1,5 +1,19 @@
 # Muutokset
 
+## 1.1.0
+
+- Korjattu: integraatio saattoi pyytää salasanaa uudelleen, vaikka tunnukset olivat
+  kunnossa. Kirjautumisen myöhempien vaiheiden virheet (koodin vaihto, OIDC-ohjaus,
+  liittymähaku) tulkittiin väärin tunnusvirheiksi, jolloin Home Assistant lopetti
+  päivitykset. Nyt salasanaa kysytään vain, jos Telia Tili hylkää tunnukset kahdesti
+  peräkkäin; palomuurin sivu (403) ja kirjautumisrajoitus (429) ovat tilapäisiä virheitä.
+- Epäonnistunut haku yritetään uudelleen 30 minuutin kuluttua eikä vasta seuraavalla
+  päivitysvälillä.
+- Tilille myöhemmin lisätyt liittymät saavat sensorinsa ilman uudelleenkäynnistystä.
+- *Voimassaoloa jäljellä* vaihtuu keskiyöllä Suomen aikaa.
+- Vianetsintätiedostoista peitetään myös puhelinnumerot, nimet ja sähköpostiosoitteet.
+- Testit käynnistävät Telia-jäljitelmän itse, ja ne kattavat Telian hetkelliset viat.
+
 ## 1.0.1
 
 - Korjattu: kirjautuminen epäonnistui Home Assistantissa virheellä "Kirjautumis- tai

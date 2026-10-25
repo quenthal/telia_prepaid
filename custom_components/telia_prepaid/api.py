@@ -81,7 +81,12 @@ class TeliaPrepaidError(Exception):
 
 
 class TeliaPrepaidAuthError(TeliaPrepaidError):
-    """Kirjautuminen epäonnistui (väärä tunnus tai salasana)."""
+    """Telia Tili hylkäsi tunnuksen tai salasanan.
+
+    Vain tämä virhe johtaa salasanan kysymiseen uudelleen, joten sitä ei käytetä
+    kirjautumisen myöhemmissä vaiheissa: kun session/start on hyväksynyt tunnukset,
+    niissä ei ole vikaa, vaan virhe on Telian päässä ja menee ohi.
+    """
 
 
 class TeliaPrepaidParseError(TeliaPrepaidError):
@@ -154,7 +159,22 @@ def mask(text: str) -> str:
         r"\1[peitetty]",
         text,
     )
-    return text
+    return mask_personal(text)
+
+
+_PERSONAL_KEYS = (
+    "msisdn|phoneNumber|displayName|alias|e?[Mm]ail|[Uu]ser[Nn]ame|firstName|lastName|fullName"
+    "|streetAddress|address"
+)
+
+
+def mask_personal(text: str) -> str:
+    """Peittää puhelinnumerot, nimet ja sähköpostiosoitteet (saldot ja päivät jäävät)."""
+    text = re.sub(
+        rf'(\\?"(?:{_PERSONAL_KEYS})\\?"\s*:\s*\\?")[^"\\]+', r"\1[peitetty]", text
+    )
+    text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "[sähköposti]", text)
+    return re.sub(r"(?<![\w.])(?:\+?358|0)(?:4\d|50)\d{6,8}(?!\d)", "[numero]", text)
 
 
 def _to_float(value: Any) -> float | None:
@@ -430,7 +450,12 @@ class TeliaPrepaidClient:
             json_body={"username": self._username, "credential": self._password},
             headers={**origin, "Accept": "application/json"},
         )
+        if resp.status == 429:
+            raise TeliaPrepaidError("Telia Tili rajoittaa kirjautumisia (429), yritetään myöhemmin")
         if resp.status in (400, 401, 403):
+            if resp.text.lstrip().startswith("<") or "html" in resp.headers.get("content-type", ""):
+                # Palomuurin tai välityspalvelimen sivu, ei Telia Tilin vastaus tunnuksiin
+                raise TeliaPrepaidError(f"session/start: {resp.status} HTML-sivulla")
             raise TeliaPrepaidAuthError("Kirjautuminen epäonnistui – tarkista tunnus ja salasana.")
         try:
             data = json.loads(resp.text)
@@ -480,7 +505,7 @@ class TeliaPrepaidClient:
             raise TeliaPrepaidParseError("OIDC-ohjaus ei palannut prepaid-sivulle.")
         query = parse_qs(urlparse(callback_url).query)
         if "error" in query:
-            raise TeliaPrepaidAuthError(
+            raise TeliaPrepaidError(
                 f"OIDC-virhe: {query.get('error')} {query.get('error_description')}"
             )
 
@@ -491,9 +516,14 @@ class TeliaPrepaidClient:
         page = await self._request("GET", callback_url, "callback_page")
         await self._discover_actions(page.text, need=("getULMOpenIDToken",))
         result = await self._call_action("getULMOpenIDToken", [code], callback_url)
-        if not isinstance(result, dict) or not result.get("success") or not result.get("accessToken"):
-            keys = sorted(result) if isinstance(result, dict) else type(result).__name__
-            raise TeliaPrepaidAuthError(f"Koodin vaihto tunnisteeksi epäonnistui (vastaus: {keys})")
+        if not isinstance(result, dict):
+            raise TeliaPrepaidParseError(
+                f"Koodin vaihdon vastausta ei tunnistettu (tyyppi {type(result).__name__})"
+            )
+        if not result.get("success") or not result.get("accessToken"):
+            raise TeliaPrepaidError(
+                f"Koodin vaihto tunnisteeksi epäonnistui (vastaus: {sorted(result)})"
+            )
         self._access_token = result["accessToken"]
         _LOGGER.debug(
             "Pääsytunniste saatu (pituus %d), voimassa %s s",
@@ -587,7 +617,7 @@ class TeliaPrepaidClient:
         if isinstance(result, dict) and result.get("status") not in (None, 200):
             status = result.get("status")
             if status in (401, 403):
-                raise TeliaPrepaidAuthError(f"Liittymien haku: pääsy estetty ({status})")
+                raise TeliaPrepaidError(f"Liittymien haku: pääsy estetty ({status})")
             raise TeliaPrepaidParseError(f"Liittymien haku palautti tilan {status}")
         items = result.get("data") if isinstance(result, dict) else result
         if not isinstance(items, list):

@@ -25,3 +25,30 @@ def test_days_remaining_uses_finnish_calendar_days():
     # 18.10.2026 klo 21.01 UTC = 19.10. 00.01 Suomessa
     assert sub.days_remaining(datetime(2026, 10, 18, 21, 1, tzinfo=timezone.utc)) == 363
     assert sub.days_remaining(datetime(2027, 10, 17, 10, tzinfo=timezone.utc)) == 0
+
+
+def test_mask_hides_personal_data_but_keeps_balances():
+    page = (
+        '1:{"msisdn":"358408179596","displayName":"Veikon liittymä","email":"veikko@example.com",'
+        '"balanceInEuros":11.41,"expiryDateUtc":"2027-10-16T21:00:00.000Z","ulmId":42522967}'
+        "\nSoita numeroon 0401234567 tai +358501234567"
+    )
+    masked = api.mask(page)
+    for secret in ("358408179596", "Veikon", "veikko@", "0401234567", "358501234567"):
+        assert secret not in masked
+    assert '"balanceInEuros":11.41' in masked
+    assert "2027-10-16T21:00:00.000Z" in masked
+    assert "42522967" in masked
+
+
+def test_next_local_midnight():
+    from custom_components.telia_prepaid.sensor import next_local_midnight
+
+    utc = timezone.utc
+    # kesäaika (+03) ja talviaika (+02)
+    assert next_local_midnight(datetime(2026, 10, 18, 20, 59, tzinfo=utc)) == datetime(
+        2026, 10, 18, 21, 0, 2, tzinfo=utc
+    )
+    assert next_local_midnight(datetime(2026, 12, 1, 12, 0, tzinfo=utc)) == datetime(
+        2026, 12, 1, 22, 0, 2, tzinfo=utc
+    )

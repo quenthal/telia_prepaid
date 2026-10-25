@@ -30,6 +30,8 @@ Jokaisesta liittymästä tulee oma laite (nimi sivulta, esim. "Veikon liittymä"
 | Liittymän tila | ACTIVE | diagnostiikka |
 
 Tiedot päivittyvät oletuksena 6 tunnin välein (asetettavissa 30 min – 24 h).
+*Voimassaoloa jäljellä* vaihtuu keskiyöllä Suomen aikaa, ja tilille myöhemmin lisätyt
+liittymät tulevat mukaan seuraavassa päivityksessä.
 Vahvistamattomat liittymät (odottavat PREPAID TILI OK -tekstiviestiä) ohitetaan.
 
 ## Asennus
@@ -64,8 +66,13 @@ kirjautuu uudelleen.
 ## Vianetsintä
 
 Jos Telia muuttaa sivustoaan niin, ettei tietoja enää tunnisteta, haetut vastaukset
-tallennetaan kansioon `/config/telia_prepaid_debug/`. Salasanat, kertakäyttökoodit ja
-pääsytunnisteet on peitetty, mutta tiedostoissa näkyvät puhelinnumerosi ja saldosi.
+tallennetaan kansioon `/config/telia_prepaid_debug/`. Salasanat, kertakäyttökoodit,
+pääsytunnisteet, puhelinnumerot, nimet ja sähköpostiosoitteet on peitetty; saldot ja
+päivämäärät näkyvät. Katso tiedostot silti läpi ennen kuin liität niitä julkiseen issueen.
+
+Salasanaa kysytään uudelleen vain, jos Telia Tili hylkää tunnukset kahdesti peräkkäin.
+Telian hetkelliset häiriöt näkyvät sensoreissa tilana *ei saatavilla*, ja haku yritetään
+uudelleen 30 minuutin kuluttua.
 
 Saman voi kokeilla ilman Home Assistantia: lataa julkaisun liitteenä oleva
 `telia_prepaid_test.py` (pelkkä Python 3.10+, ei lisäkirjastoja) ja aja
@@ -114,8 +121,7 @@ automation:
 
 ```bash
 pip install pytest-homeassistant-custom-component
-python tests/mock_server.py &          # paikallinen Telia-jäljitelmä
-pytest tests
+pytest tests                           # käynnistää Telia-jäljitelmän (tests/mock_server.py) itse
 python tools/build_console.py          # -> dist/telia_prepaid_test.py
 python tools/make_brand.py             # brändikuvat (vaatii pillow)
 ```
