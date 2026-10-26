@@ -144,6 +144,8 @@ python tools/make_brand.py             # brändikuvat tools/telia_pebble.png:st�
 
 Uusi versio julkaistaan nostamalla `version` tiedostossa `manifest.json` ja lisäämällä
 muutokset `CHANGELOG.md`:hen – GitHub Actions luo tagin ja julkaisun automaattisesti.
+Versiot ovat muotoa `VVVV.KK.N` (vuosi, kuukausi, kuukauden julkaisun järjestysnumero 1:stä
+alkaen), esim. `2026.10.1`, `2026.10.2`, `2026.11.1`.
 
 Tämä ei ole Telian virallinen integraatio, eikä Telia ole osallisena projektissa.
 Telia-nimi ja -logo ovat Telia Company AB:n tavaramerkkejä; niitä käytetään vain kertomaan,
