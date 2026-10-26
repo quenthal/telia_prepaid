@@ -1,5 +1,12 @@
 # Muutokset
 
+Versiot ovat muotoa `VVVV.KK.N`: julkaisuvuosi, -kuukausi ja kuukauden julkaisun
+järjestysnumero (esim. 2026.10.1 = lokakuun 2026 ensimmäinen julkaisu).
+
+## 2026.10.1
+
+- Siirrytty kalenteriversiointiin. Sisältö on sama kuin versiossa 1.1.1.
+
 ## 1.1.1
 
 - Kuvakkeena ja logona Telian logo (läpinäkyvä tausta, vaalea ja tumma teema).
