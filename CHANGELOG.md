@@ -1,5 +1,10 @@
 # Muutokset
 
+## 1.1.1
+
+- Kuvakkeena ja logona Telian logo (läpinäkyvä tausta, vaalea ja tumma teema).
+- README: selvä maininta, että projekti on epävirallinen eikä liity Teliaan.
+
 ## 1.1.0
 
 - Korjattu: integraatio saattoi pyytää salasanaa uudelleen, vaikka tunnukset olivat
