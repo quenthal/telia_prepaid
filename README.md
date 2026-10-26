@@ -14,6 +14,22 @@ selaimella, joten kaikki tilillesi lisätyt liittymät tulevat mukaan.
 *English: Home Assistant integration for Telia Finland prepaid subscriptions – balance,
 bonus balance and expiry date. Uses your Minun Prepaid (Telia Tili) username and password.*
 
+> [!IMPORTANT]
+> **Epävirallinen projekti.** Tämä on yksityinen harrasteprojekti, jolla ei ole mitään
+> yhteyttä Telia Companyyn tai Telia Finland Oyj:hin. Telia ei ole tehnyt, tarkastanut,
+> hyväksynyt eikä tue tätä integraatiota. Integraatio käyttää Minun Prepaid -verkkopalvelun
+> julkaisemattomia rajapintoja, jotka voivat muuttua tai lakata toimimasta milloin tahansa.
+> Käyttö omalla vastuulla; ohjelmisto toimitetaan sellaisenaan ilman takuuta (ks. [LICENSE](LICENSE)).
+> Älä ota yhteyttä Telian asiakaspalveluun tätä integraatiota koskevissa asioissa, vaan
+> tee [issue](https://github.com/quenthal/telia_prepaid/issues).
+>
+> **Unofficial project.** This is an independent hobby project and is not affiliated with,
+> endorsed by, sponsored by or supported by Telia Company or Telia Finland Oyj. It relies on
+> undocumented interfaces of the Minun Prepaid web service that may change or stop working
+> at any time. Use at your own risk; provided as is, without warranty (see [LICENSE](LICENSE)).
+> Telia and the Telia logo are trademarks of Telia Company AB, used here only to identify
+> the service the integration connects to.
+
 ## Sensorit
 
 Jokaisesta liittymästä tulee oma laite (nimi sivulta, esim. "Veikon liittymä"):
@@ -130,5 +146,6 @@ Uusi versio julkaistaan nostamalla `version` tiedostossa `manifest.json` ja lis�
 muutokset `CHANGELOG.md`:hen – GitHub Actions luo tagin ja julkaisun automaattisesti.
 
 Tämä ei ole Telian virallinen integraatio, eikä Telia ole osallisena projektissa.
-Telia-nimi ja -logo ovat Telia Companyn tavaramerkkejä; niitä käytetään vain kertomaan,
-mihin palveluun integraatio liittyy.
+Telia-nimi ja -logo ovat Telia Company AB:n tavaramerkkejä; niitä käytetään vain kertomaan,
+mihin palveluun integraatio liittyy. Tavaramerkkien käyttö ei tarkoita yhteistyötä eikä
+Telian hyväksyntää.
