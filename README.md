@@ -123,11 +123,12 @@ automation:
 pip install pytest-homeassistant-custom-component
 pytest tests                           # käynnistää Telia-jäljitelmän (tests/mock_server.py) itse
 python tools/build_console.py          # -> dist/telia_prepaid_test.py
-python tools/make_brand.py             # brändikuvat (vaatii pillow)
+python tools/make_brand.py             # brändikuvat tools/telia_pebble.png:stä (vaatii pillow)
 ```
 
 Uusi versio julkaistaan nostamalla `version` tiedostossa `manifest.json` ja lisäämällä
 muutokset `CHANGELOG.md`:hen – GitHub Actions luo tagin ja julkaisun automaattisesti.
 
 Tämä ei ole Telian virallinen integraatio, eikä Telia ole osallisena projektissa.
-Kuvake on projektin oma.
+Telia-nimi ja -logo ovat Telia Companyn tavaramerkkejä; niitä käytetään vain kertomaan,
+mihin palveluun integraatio liittyy.
